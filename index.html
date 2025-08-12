@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>HTTP Security Analysis Suite</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="description" content="HTTP Security Analysis Suite" />
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50%25' x='50%25' dominant-baseline='middle' text-anchor='middle' font-size='48'%3E🛡️%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body class="bg-grid text-white min-h-screen antialiased">
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="badge">🛡️</div>
+          <div class="title">HTTP Security Suite</div>
+        </div>
+        <nav class="menu">
+          <a href="#/inputs" class="nav-link">Inputs</a>
+          <a href="#/results" class="nav-link">Findings</a>
+          <a href="#/cache" class="nav-link">Cache</a>
+          <a href="#/diff" class="nav-link">Diff</a>
+          <a href="#/payloads" class="nav-link">Payloads</a>
+          <a href="#/cookies" class="nav-link">Cookies</a>
+          <a href="#/csp" class="nav-link">CSP</a>
+          <a href="#/cors" class="nav-link">CORS</a>
+          <a href="#/project" class="nav-link">Project</a>
+          <a href="#/report" class="nav-link">Report</a>
+        </nav>
+        <div class="sidebar-actions">
+          <button id="analyze-btn" class="btn btn-primary w-full">
+            Analyze
+          </button>
+          <button id="export-btn" class="btn w-full">Export</button>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section data-route="/inputs" class="route">
+          <div class="section-header">
+            <h2 class="section-title">Inputs</h2>
+            <p class="section-subtitle">
+              Paste a request and optional response. Click Add to Session to
+              append multiple transactions for stronger cache analysis.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card h-full">
+              <div class="card-header">
+                <div class="card-title">HTTP Request</div>
+              </div>
+              <div class="card-body">
+                <textarea
+                  id="request-input"
+                  rows="12"
+                  class="textarea"
+                  placeholder="GET /path?x=1 HTTP/1.1
+Host: example.com
+User-Agent: curl/8.5.0
+
+"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="card h-full">
+              <div class="card-header">
+                <div class="card-title">HTTP Response (optional)</div>
+              </div>
+              <div class="card-body">
+                <textarea
+                  id="response-input"
+                  rows="12"
+                  class="textarea"
+                  placeholder="HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Security-Policy: default-src 'self'
+Cache-Control: public, max-age=60
+
+<html>...</html>
+"
+                ></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 flex flex-wrap gap-3">
+            <button id="add-session" class="btn">Add to Session</button>
+            <button id="analyze-btn-bottom" class="btn btn-primary">
+              Analyze Session
+            </button>
+            <button id="clear-session" class="btn">Clear Session</button>
+            <div class="text-sm text-gray-400 self-center">
+              Session: <span id="session-count">0</span> transactions
+            </div>
+          </div>
+
+          <div class="mt-4 card">
+            <div class="card-header">
+              <div class="card-title">Current Session</div>
+              <div class="text-xs text-gray-500">
+                View and manage all transactions added so far
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="session-list" class="space-y-2 overflow-auto"></div>
+            </div>
+          </div>
+
+          <div class="card mt-4">
+            <div class="card-header">
+              <div class="card-title">Import HAR</div>
+              <div class="text-xs text-gray-500">
+                Drop a .har, select a file, or paste HAR JSON to import a
+                journey.
+              </div>
+            </div>
+            <div class="card-body space-y-2">
+              <div id="har-drop" class="dropzone" tabindex="0">
+                Drop HAR file here
+              </div>
+              <div class="file-input-wrapper">
+                <label for="har-input" class="btn">Select .har File</label>
+                <span id="har-file-name" class="file-name-display">No file chosen</span>
+                <input id="har-input" type="file" accept=".har,application/json" class="sr-only" />
+                <button id="har-import-clear" class="btn btn-sm">Clear</button>
+              </div>
+              <label for="har-paste" class="sr-only">Paste HAR Content</label>
+              <textarea
+                id="har-paste"
+                rows="4"
+                class="textarea"
+                placeholder='{ "log": { "entries": [ ... ] } }'
+              ></textarea>
+              <div class="flex gap-2">
+                <button id="har-import-text" class="btn btn-primary btn-sm">
+                  Import HAR (from text)
+                </button>
+                <div
+                  id="har-import-status"
+                  class="text-xs text-gray-500 self-center"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/results" class="route hidden">
+          <div class="section-header">
+            <h2 class="section-title">Findings</h2>
+            <p class="section-subtitle">Scoring and report-ready actions.</p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4">
+            <div class="card">
+              <div class="card-body grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div class="flex items-center gap-3">
+                  <span class="text-gray-300">Security Score:</span>
+                  <span id="security-score" class="score-indicator">—</span>
+                </div>
+                <div id="score-breakdown" class="text-sm text-gray-400"></div>
+                <div
+                  id="results-filters"
+                  class="flex flex-wrap gap-2 justify-start lg:justify-end"
+                ></div>
+              </div>
+            </div>
+
+            <div id="results-dashboard" class="space-y-3"></div>
+          </div>
+        </section>
+
+        <section data-route="/cache" class="route hidden">
+          <div class="section-header">
+            <h2 class="section-title">Cache Analysis</h2>
+            <p class="section-subtitle">
+              Cache key simulator, collisions, visual graph, poisoning/desync
+              hints.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Key Models</div>
+                <div class="text-xs text-gray-500">CDN vs Origin proxy</div>
+              </div>
+              <div class="card-body">
+                <div id="cache-keys-table" class="overflow-auto"></div>
+                <div class="mt-3 text-xs text-gray-400">
+                  Origin model can ignore tracking params (utm_*, fbclid,
+                  gclid).
+                </div>
+                <div class="mt-2 flex items-center gap-2">
+                  <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" id="origin-ignore-tracking" />
+                    Ignore tracking params
+                  </label>
+                  <button id="recompute-keys" class="btn btn-sm">
+                    Recompute
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Visual Cache Graph</div>
+                <div class="text-xs text-gray-500">CDN key clusters</div>
+              </div>
+              <div class="card-body">
+                <svg id="cache-graph" width="100%" height="320"></svg>
+                <div class="text-xs text-gray-500 mt-1">
+                  Nodes = requests. Same-color nodes share the same CDN key
+                  hash.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Collisions & Differences</div>
+              </div>
+              <div class="card-body">
+                <div id="cache-collisions" class="space-y-2"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Poisoning & Desync Hints</div>
+              </div>
+              <div class="card-body">
+                <div id="poisoning-flags" class="space-y-2"></div>
+                <hr class="my-2 border-gray-800" />
+                <div id="desync-hints" class="space-y-2"></div>
+                <hr class="my-2 border-gray-800" />
+                <pre id="remediation-snippets" class="code-block"></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/diff" class="route hidden">
+          <div class="section-header">
+            <h2 class="section-title">Differential Analysis (Diff)</h2>
+            <p class="section-subtitle">
+              Compare two responses with color-coded highlights.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <div class="flex flex-wrap gap-2 items-end">
+                <div>
+                  <label for="diff-a" class="label">Left (A)</label>
+                  <select id="diff-a" class="input"></select>
+                </div>
+                <div>
+                  <label for="diff-b" class="label">Right (B)</label>
+                  <select id="diff-b" class="input"></select>
+                </div>
+                <div class="flex gap-2">
+                  <button id="diff-run" class="btn btn-primary btn-sm">
+                    Diff
+                  </button>
+                  <button id="diff-swap" class="btn btn-sm">Swap</button>
+                  <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" id="diff-changes-only" />
+                    Show changes only
+                  </label>
+                </div>
+              </div>
+
+              <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="diff-pane">
+                  <div class="diff-title">A</div>
+                  <div id="diff-left" class="diff-body"></div>
+                </div>
+                <div class="diff-pane">
+                  <div class="diff-title">B</div>
+                  <div id="diff-right" class="diff-body"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/payloads" class="route hidden">
+          <div class="section-header">
+            <h2 class="section-title">Payloads</h2>
+            <p class="section-subtitle">
+              Generate payloads; advanced smuggling variants; copy as cURL per
+              payload.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Step 1: Choose Base Request</div>
+              </div>
+              <div class="card-body space-y-2">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div class="md:col-span-2">
+                    <label for="lab-req-select" class="label">Parsed requests</label>
+                    <select id="lab-req-select" class="input">
+                      <option value="">— none —</option>
+                    </select>
+                  </div>
+                  <div class="flex items-end">
+                    <button id="lab-load-from-parsed" class="btn w-full">
+                      Load from parsed
+                    </button>
+                  </div>
+                </div>
+                <label for="lab-base-request" class="sr-only">Base Request</label>
+                <textarea
+                  id="lab-base-request"
+                  rows="10"
+                  class="textarea"
+                  placeholder="GET / HTTP/1.1
+Host: example.com
+User-Agent: ...
+..."
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Step 2: Techniques</div>
+                <div class="text-xs text-gray-500">
+                  Advanced smuggling variants included
+                </div>
+              </div>
+              <div class="card-body space-y-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-tech"
+                      value="unkeyed-header"
+                    />
+                    Unkeyed Header</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-tech"
+                      value="unkeyed-param"
+                    />
+                    Unkeyed Param</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-tech"
+                      value="param-cloak"
+                    />
+                    Param Cloaking</label
+                  >
+                  <label
+                    ><input type="checkbox" class="lab-tech" value="fat-get" />
+                    Fat GET</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-tech"
+                      value="response-split"
+                    />
+                    Response Splitting</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-tech"
+                      value="smuggling"
+                    />
+                    Request Smuggling</label
+                  >
+                  <label
+                    ><input type="checkbox" class="lab-tech" value="hho" />
+                    Header Oversize</label
+                  >
+                  <label
+                    ><input type="checkbox" class="lab-tech" value="hmc" />
+                    Meta Character</label
+                  >
+                  <label
+                    ><input type="checkbox" class="lab-tech" value="hmo" />
+                    Method Override</label
+                  >
+                  <label
+                    ><input type="checkbox" class="lab-tech" value="hpp" />
+                    Param Pollution</label
+                  >
+                  <label
+                    ><input type="checkbox" class="lab-tech" value="wcd-path" />
+                    WCD Path</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-tech"
+                      value="wcd-traversal"
+                    />
+                    WCD Traversal</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-tech"
+                      value="wcd-chars"
+                    />
+                    WCD Special Chars</label
+                  >
+                </div>
+
+                <div
+                  id="smuggling-advanced"
+                  class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm"
+                >
+                  <div class="md:col-span-3">
+                    <label class="label">Smuggling variants</label>
+                  </div>
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="CL.TE"
+                    />
+                    CL.TE</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="TE.CL"
+                    />
+                    TE.CL</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="TE-TE"
+                    />
+                    TE-TE (dup chunked)</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="obf-space-colon"
+                    />
+                    Obf: space before colon</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="obf-casing"
+                    />
+                    Obf: header casing</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="chunk-ext"
+                    />
+                    Chunk extension</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="obs-fold"
+                    />
+                    TE obs-fold (folded)</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="dup-casing"
+                    />
+                    Duplicate TE w/ casing</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="clcl-conflict"
+                    />
+                    Duplicate Content-Length</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="lab-smugg-variant"
+                      value="te-lws"
+                    />
+                    TE with extra LWS</label
+                  >
+                </div>
+
+                <div class="mt-1 flex items-center justify-between gap-2">
+                  <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" id="lab-combine" />
+                    Combine compatible techniques into one raw request
+                  </label>
+                  <div class="flex gap-2">
+                    <button id="lab-generate" class="btn btn-primary">
+                      Generate Payloads
+                    </button>
+                    <button id="lab-clear" class="btn">Clear</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mt-4">
+            <div class="card-header">
+              <div class="card-title">Step 3: Copy Payloads</div>
+            </div>
+            <div id="lab-payloads" class="card-body space-y-3"></div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Step 4: Paste Raw HTTP Response</div>
+              </div>
+              <div class="card-body">
+                <label for="lab-raw-response" class="sr-only">Raw HTTP Response</label>
+                <textarea
+                  id="lab-raw-response"
+                  rows="10"
+                  class="textarea"
+                  placeholder="HTTP/1.1 200 OK
+Content-Type: text/html
+...
+
+<html>...</html>"
+                ></textarea>
+                <div class="mt-3 flex gap-2">
+                  <button id="lab-analyze" class="btn btn-primary">
+                    Analyze Response
+                  </button>
+                  <button id="lab-clear-response" class="btn">Clear Response</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Step 5: Analysis Report</div>
+                <div class="text-xs text-gray-500">Indicators & guidance</div>
+              </div>
+              <div id="lab-report" class="card-body space-y-2"></div>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/cookies" class="route hidden">
+          <div class="section-header">
+            <h2 class="section-title">Advanced Cookie Analysis</h2>
+            <p class="section-subtitle">
+              Security and privacy analysis of all captured `Set-Cookie` headers.
+            </p>
+          </div>
+          <div id="cookie-analysis-results" class="cookie-analysis-container">
+            <div class="card">
+                <div class="card-body text-gray-400">No cookies have been captured from session traffic yet.</div>
+            </div>
+          </div>
+        </section>
+
+
+        <section data-route="/csp" class="route hidden">
+          <div class="section-header">
+            <h2 class="section-title">CSP Audit & Workshop</h2>
+            <p class="section-subtitle">
+              Browser CSP v3 audit and interactive CSP/Permissions-Policy
+              builders.
+            </p>
+          </div>
+
+          <div class="card">
+            <div
+              class="card-body flex flex-wrap items-center justify-between gap-2"
+            >
+              <div class="text-sm text-gray-300">
+                Uses the latest response with a CSP header.
+              </div>
+              <div class="flex gap-2 items-center">
+                <div class="legend text-xs">
+                  <span title="Error/risk">❗</span> Risk
+                  <span class="ml-2" title="Warning">⚠️</span> Warn
+                  <span class="ml-2" title="Info">ℹ️</span> Info
+                  <span class="ml-2" title="OK">✅</span> OK
+                </div>
+                <button id="csp-expand-all" class="btn btn-sm">Expand all</button>
+                <button id="csp-collapse-all" class="btn btn-sm">
+                  Collapse all
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="csp-report" class="space-y-3"></div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">CSP Workshop</div>
+                <div class="text-xs text-gray-500">
+                  Paste or build a policy; get a hardened header
+                </div>
+              </div>
+              <div class="card-body space-y-2">
+                <label for="csp-workshop-input" class="sr-only">CSP Workshop Input</label>
+                <textarea
+                  id="csp-workshop-input"
+                  rows="6"
+                  class="textarea"
+                  placeholder="Content-Security-Policy: default-src 'self'"
+                ></textarea>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="csp-opt"
+                      data-dir="default-src"
+                      data-val="'self'"
+                    />
+                    default-src 'self'</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="csp-opt"
+                      data-dir="script-src"
+                      data-val="'self'"
+                    />
+                    script-src 'self'</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="csp-opt"
+                      data-dir="script-src"
+                      data-val="'strict-dynamic'"
+                    />
+                    script-src 'strict-dynamic'</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="csp-opt"
+                      data-dir="script-src"
+                      data-val="'unsafe-inline'"
+                    />
+                    script-src 'unsafe-inline' (avoid)</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="csp-opt"
+                      data-dir="style-src"
+                      data-val="'self'"
+                    />
+                    style-src 'self'</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="csp-opt"
+                      data-dir="style-src"
+                      data-val="'unsafe-inline'"
+                    />
+                    style-src 'unsafe-inline' (avoid)</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="csp-opt"
+                      data-dir="object-src"
+                      data-val="'none'"
+                    />
+                    object-src 'none'</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="csp-opt"
+                      data-dir="base-uri"
+                      data-val="'none'"
+                    />
+                    base-uri 'none'</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="csp-opt"
+                      data-dir="frame-ancestors"
+                      data-val="'none'"
+                    />
+                    frame-ancestors 'none'</label
+                  >
+                </div>
+                <div class="flex flex-wrap gap-2 mt-2">
+                  <button id="csp-preset-strict" class="btn btn-sm">
+                    Strict baseline
+                  </button>
+                </div>
+                <div class="flex gap-2">
+                  <button id="csp-build" class="btn btn-primary btn-sm">
+                    Build CSP
+                  </button>
+                  <button
+                    id="csp-copy-built"
+                    class="btn btn-sm"
+                    title="Copy header"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <pre id="csp-built" class="code-block"></pre>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Permissions-Policy Generator</div>
+                <div class="text-xs text-gray-500">
+                  Deny features by default; allow only what's needed
+                </div>
+              </div>
+              <div class="card-body space-y-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                  <label
+                    ><input type="checkbox" class="pp-opt" data-feat="geolocation" />
+                    geolocation</label
+                  >
+                  <label
+                    ><input type="checkbox" class="pp-opt" data-feat="camera" />
+                    camera</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="pp-opt"
+                      data-feat="microphone"
+                    />
+                    microphone</label
+                  >
+                  <label
+                    ><input type="checkbox" class="pp-opt" data-feat="payment" />
+                    payment</label
+                  >
+                  <label
+                    ><input
+                      type="checkbox"
+                      class="pp-opt"
+                      data-feat="fullscreen"
+                    />
+                    fullscreen</label
+                  >
+                  <label><input type="checkbox" class="pp-opt" data-feat="usb" /> usb</label>
+                </div>
+                <div class="flex flex-wrap gap-2 mt-2">
+                  <button id="pp-preset-strict" class="btn btn-sm">
+                    Permissions-Policy baseline
+                  </button>
+                </div>
+                <div class="flex gap-2">
+                  <button id="pp-build" class="btn btn-primary btn-sm">
+                    Build Permissions-Policy
+                  </button>
+                  <button id="pp-copy-built" class="btn btn-sm">Copy</button>
+                </div>
+                <pre id="pp-built" class="code-block"></pre>
+
+                <div class="mt-2">
+                  <button id="coopcoep-gen" class="btn btn-sm" title="COOP/COEP">
+                    COOP/COEP snippet
+                  </button>
+                  <pre id="coopcoep-output" class="code-block mt-2"></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/cors" class="route hidden">
+          <div class="section-header">
+            <h2 class="section-title">CORS Lab (Preflight Simulator)</h2>
+            <p class="section-subtitle">
+              Build a synthetic OPTIONS preflight and analyze the real response.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Preflight Builder</div>
+              </div>
+              <div class="card-body space-y-2">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div class="md:col-span-2">
+                    <label for="cors-req-select" class="label">Parsed requests</label>
+                    <select id="cors-req-select" class="input">
+                      <option value="">— none —</option>
+                    </select>
+                  </div>
+                  <div class="flex items-end">
+                    <button id="cors-load-from-parsed" class="btn w-full">
+                      Load from parsed
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div>
+                    <label for="cors-scheme" class="label">Scheme</label>
+                    <select id="cors-scheme" class="input">
+                      <option>https</option>
+                      <option>http</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="cors-host" class="label">Host</label>
+                    <input id="cors-host" class="input" placeholder="example.com" />
+                  </div>
+                  <div class="md:col-span-2">
+                    <label for="cors-path" class="label">Path</label>
+                    <input id="cors-path" class="input" placeholder="/api" />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div>
+                    <label for="cors-origin-preset" class="label">Origin preset</label>
+                    <select id="cors-origin-preset" class="input">
+                      <option value="">— choose —</option>
+                      <option value="app-sub">https://app.&lt;host&gt;</option>
+                      <option value="null">null</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="cors-origin" class="label">Origin</label>
+                    <input
+                      id="cors-origin"
+                      class="input"
+                      placeholder="https://app.example"
+                    />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div>
+                    <label for="cors-acrm-select" class="label">AC-Request-Method</label>
+                    <select id="cors-acrm-select" class="input">
+                      <option>GET</option>
+                      <option>POST</option>
+                      <option>PUT</option>
+                      <option>PATCH</option>
+                      <option>DELETE</option>
+                      <option>HEAD</option>
+                      <option>OPTIONS</option>
+                    </select>
+                  </div>
+                  <div class="flex items-center">
+                    <label for="cors-expect-credentials" class="label mr-2">Expect credentials</label>
+                    <input type="checkbox" id="cors-expect-credentials" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="label">Common headers (adds to ACRH)</label>
+                  <div id="cors-headers-common" class="grid grid-cols-2 gap-1 text-sm">
+                    <label
+                      ><input
+                        type="checkbox"
+                        class="cors-chk-hdr"
+                        value="authorization"
+                      />
+                      Authorization</label
+                    >
+                    <label
+                      ><input
+                        type="checkbox"
+                        class="cors-chk-hdr"
+                        value="content-type"
+                      />
+                      Content-Type</label
+                    >
+                    <label
+                      ><input
+                        type="checkbox"
+                        class="cors-chk-hdr"
+                        value="x-requested-with"
+                      />
+                      X-Requested-With</label
+                    >
+                    <label
+                      ><input
+                        type="checkbox"
+                        class="cors-chk-hdr"
+                        value="x-csrf-token"
+                      />
+                      X-CSRF-Token</label
+                    >
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div class="md:col-span-2">
+                    <label for="cors-acrh" class="label">AC-Request-Headers (extra, comma)</label>
+                    <input
+                      id="cors-acrh"
+                      class="input"
+                      placeholder="X-Test, X-Api"
+                    />
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 mt-2">
+                  <button id="cors-gen" class="btn btn-primary btn-sm">
+                    Generate
+                  </button>
+                  <button id="cors-clear" class="btn btn-sm">Clear</button>
+                  <button id="cors-copy-raw" class="btn btn-sm">Copy request</button>
+                </div>
+
+                <div class="mt-2">
+                  <div class="text-xs text-gray-400 mb-1">Raw preflight request</div>
+                  <pre id="cors-raw" class="code-block"></pre>
+                </div>
+                <div class="mt-2">
+                  <div class="flex items-center justify-between">
+                    <div class="text-xs text-gray-400 mb-1">cURL</div>
+                    <button id="cors-copy-curl" class="btn btn-sm">Copy cURL</button>
+                  </div>
+                  <pre id="cors-curl" class="code-block"></pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Analyze Response</div>
+              </div>
+              <div class="card-body">
+                <label for="cors-resp" class="sr-only">CORS Response</label>
+                <textarea
+                  id="cors-resp"
+                  rows="10"
+                  class="textarea"
+                  placeholder="Paste raw OPTIONS response (headers + body)"
+                ></textarea>
+                <div class="mt-2 flex gap-2">
+                  <button id="cors-analyze" class="btn btn-primary btn-sm">
+                    Analyze
+                  </button>
+                  <button id="cors-analyze-clear" class="btn btn-sm">Clear</button>
+                </div>
+                <div class="mt-2">
+                  <div class="text-xs text-gray-400 mb-1">Report</div>
+                  <pre id="cors-report" class="code-block"></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/project" class="route hidden">
+          <div class="section-header">
+            <h2 class="section-title">Project</h2>
+            <p class="section-subtitle">
+              Autosave to localStorage; Export/Import JSON for sharing.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="card-body flex flex-wrap gap-2">
+              <button id="project-export" class="btn btn-primary">
+                Export Project
+              </button>
+              <label class="btn">
+                Import Project
+                <input
+                  id="project-import"
+                  type="file"
+                  accept="application/json"
+                  class="hidden"
+                />
+              </label>
+              <button id="project-clear" class="btn">Clear Local Storage</button>
+              <div class="text-xs text-gray-500 self-center">
+                Session autosaves on change.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/report" class="route hidden">
+          <div class="section-header">
+            <h2 class="section-title">Report</h2>
+            <p class="section-subtitle">
+              Download Markdown or PDF with all findings and scores.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <button id="export-btn-report" class="btn btn-primary">
+                Export Report
+              </button>
+              <div class="text-xs text-gray-500 mt-2">
+                Ensure you analyzed inputs first.
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+          Built by Abhiyan (0x4vian)&trade; &mdash; 
+          <a href="https://buymeacoffee.com/4vian" target="_blank" rel="noopener noreferrer" class="footer-link">
+              <i class="fas fa-coffee"></i> Buy Me a Coffee
+          </a>
+      </footer>
+
+    </div>
+
+    <script src="js/core.js"></script>
+    <script src="js/parsers.js"></script>
+    <script src="js/analysis-cache.js"></script>
+    <script src="js/analysis-csp.js"></script>
+    <script src="js/payloads.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        document.getElementById('har-input').addEventListener('change', function() {
+            const fileNameDisplay = document.getElementById('har-file-name');
+            if (this.files.length > 0) {
+                fileNameDisplay.textContent = this.files[0].name;
+            } else {
+                fileNameDisplay.textContent = 'No file chosen';
+            }
+        });
+    </script>
+  </body>
+</html>
