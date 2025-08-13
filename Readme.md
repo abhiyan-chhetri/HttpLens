@@ -1,5 +1,5 @@
 
-# HTTP Security Analysis Suite 🛡️
+# HTTP Security Analysis Suite - HttpLens🛡️
 
 A browser-based suite of tools for analyzing HTTP traffic to uncover security vulnerabilities.  
 Designed for **security professionals**, **developers**, and **bug bounty hunters** who need to quickly dissect HTTP requests and responses — all **locally**, with **no data ever leaving your machine**.
